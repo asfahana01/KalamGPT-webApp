@@ -1,0 +1,419 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0d1b2a;
+  --navy-mid: #152234;
+  --navy-soft: #1e3050;
+  --saffron: #f4a12e;
+  --saffron-d: #d4860f;
+  --ivory: #f5f0e8;
+  --white: #ffffff;
+  --muted: #8a9bb0;
+  --error: #e05252;
+  --success: #4caf50;
+  --radius: 14px;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--navy);
+  color: var(--ivory);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ─── Page Layout ─────────────────────────────────────────────────────────── */
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 20px;
+  background: linear-gradient(135deg, #0d1b2a 0%, #152234 100%);
+}
+
+/* ─── Card & Form Styling ─────────────────────────────────────────────────── */
+
+.auth-card {
+  background: var(--navy-mid);
+  border: 1px solid rgba(244,161,46,0.2);
+  border-radius: var(--radius);
+  padding: 40px 30px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.auth-card h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  color: var(--saffron);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.auth-card p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ivory);
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 15px;
+  background: var(--navy-soft);
+  border: 1px solid rgba(244,161,46,0.15);
+  border-radius: 8px;
+  color: var(--ivory);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--saffron);
+  box-shadow: 0 0 0 3px rgba(244,161,46,0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--muted);
+}
+
+/* ─── Button Styling ─────────────────────────────────────────────────────── */
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--saffron);
+  color: var(--navy);
+  width: 100%;
+  margin-top: 10px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--saffron-d);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244,161,46,0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--saffron);
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-link:hover {
+  color: var(--saffron-d);
+}
+
+.btn-logout {
+  background: var(--error);
+  color: white;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+.btn-logout:hover {
+  background: #c23030;
+}
+
+/* ─── Message & Alert Styling ─────────────────────────────────────────────── */
+
+.error-message {
+  background: rgba(224,82,82,0.15);
+  border: 1px solid rgba(224,82,82,0.3);
+  color: #f08080;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.success-message {
+  background: rgba(76,175,80,0.15);
+  border: 1px solid rgba(76,175,80,0.3);
+  color: #90ee90;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+.info-text {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 20px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(244,161,46,0.1);
+}
+
+.divider span {
+  margin: 0 10px;
+}
+
+/* ─── OTP Input Styling ─────────────────────────────────────────────────── */
+
+.otp-inputs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 30px 0;
+}
+
+.otp-input {
+  width: 50px;
+  height: 50px;
+  font-size: 1.5rem;
+  text-align: center;
+  background: var(--navy-soft);
+  border: 2px solid rgba(244,161,46,0.15);
+  border-radius: 8px;
+  color: var(--ivory);
+  font-weight: bold;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: var(--saffron);
+}
+
+/* ─── Dashboard Styling ──────────────────────────────────────────────────── */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--navy);
+}
+
+.navbar {
+  background: var(--navy-mid);
+  border-bottom: 1px solid rgba(244,161,46,0.2);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  color: var(--saffron);
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 0.9rem;
+}
+
+.user-email {
+  color: var(--muted);
+}
+
+/* ─── Chat Area (from before) ────────────────────────────────────────────── */
+
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 16px;
+}
+
+.messages { display: flex; flex-direction: column; gap: 20px; }
+
+.message-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.kalam-row { flex-direction: row; }
+.user-row { flex-direction: row-reverse; }
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(244,161,46,0.25);
+}
+
+.kalam-avatar { background: #0f2235; }
+.user-avatar { background: var(--navy-soft); }
+
+.bubble {
+  max-width: 72%;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  line-height: 1.65;
+  font-size: 0.93rem;
+}
+
+.kalam-bubble {
+  background: #0f2235;
+  border: 1px solid rgba(244,161,46,0.15);
+  border-top-left-radius: 4px;
+}
+
+.user-bubble {
+  background: var(--navy-soft);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-top-right-radius: 4px;
+  color: var(--white);
+}
+
+.input-bar {
+  background: var(--navy-mid);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 14px 16px 10px;
+  flex-shrink: 0;
+}
+
+.input-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--navy-soft);
+  border: 1px solid rgba(244,161,46,0.2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.input-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ivory);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.93rem;
+  resize: none;
+  min-height: 24px;
+  max-height: 160px;
+}
+
+.input-textarea::placeholder { color: var(--muted); }
+
+.send-btn {
+  width: 38px;
+  height: 38px;
+  background: var(--saffron);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) { background: var(--saffron-d); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.send-btn svg {
+  width: 17px;
+  height: 17px;
+  color: var(--navy);
+}
+
+/* ─── Spinner ────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(13,27,42,0.3);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 30px 20px;
+  }
+  
+  .auth-card h1 {
+    font-size: 1.5rem;
+  }
+  
+  .bubble { max-width: 88%; }
+}

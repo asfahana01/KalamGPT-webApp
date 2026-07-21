@@ -1,0 +1,27 @@
+# Secrets — NEVER commit these
+.env
+*.pem
+*.key
+
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Database
+*.db
+*.sqlite3
+
+# Model files (too large for git — host on HuggingFace Hub instead)
+kalam_model/
+*.safetensors
+
+# Vector database
+knowledge/vector_db/
+
+# Uploads
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
