@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  test_stt.html
+  Standalone page to record your voice in the browser and hit the
+  /api/speech-to-text endpoint directly — useful for testing before
+  your React frontend's recording UI exists.
+
+  Usage:
+    1. Open this file directly in Chrome/Edge (double-click it).
+    2. Update API_URL and TOKEN below.
+    3. Click "Record", speak, click "Stop", then "Transcribe".
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KalamGPT STT Test</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 500px; margin: 60px auto; }
+  button { padding: 10px 18px; margin-right: 8px; font-size: 15px; cursor: pointer; }
+  #status { margin-top: 16px; color: #555; }
+  #result { margin-top: 16px; padding: 12px; background: #f4f4f4; border-radius: 6px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h2>KalamGPT — Speech-to-Text Test</h2>
+  <button id="recordBtn">🎙️ Record</button>
+  <button id="stopBtn" disabled>⏹️ Stop</button>
+  <button id="sendBtn" disabled>⬆️ Transcribe</button>
+  <div id="status">Idle.</div>
+  <div id="result"></div>
+
+<script>
+  const API_URL = "http://localhost:5000/api/speech-to-text"; // adjust host/port
+  const TOKEN = "e3a02b1de65aaa9a06583461e4fdfc6257713cc9b7c3249b89509fd90c726327"; // paste a valid login token, or remove
+                                        // the Authorization header below if you
+                                        // made the endpoint public for testing
+
+  let mediaRecorder, chunks = [], audioBlob;
+
+  const recordBtn = document.getElementById("recordBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const sendBtn = document.getElementById("sendBtn");
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+
+  recordBtn.onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      audioBlob = new Blob(chunks, { type: "audio/webm" });
+      sendBtn.disabled = false;
+      status.textContent = "Recorded. Ready to transcribe.";
+    };
+    mediaRecorder.start();
+    status.textContent = "Recording...";
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+  };
+
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+  };
+
+  sendBtn.onclick = async () => {
+    status.textContent = "Transcribing...";
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "recording.webm");
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${TOKEN}` }, // remove if endpoint is public
+        body: formData
+      });
+      const data = await res.json();
+      status.textContent = res.ok ? "Done." : `Error (${res.status})`;
+      result.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      status.textContent = "Request failed.";
+      result.textContent = err.message;
+    }
+  };
+</script>
+</body>
+</html>
