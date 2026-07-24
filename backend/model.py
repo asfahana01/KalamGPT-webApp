@@ -4,7 +4,7 @@ Loads the fine-tuned GPT-2 and exposes a .generate() interface.
 """
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import logging
 
@@ -41,12 +41,9 @@ class KalamGPT:
         )
         self.model.resize_token_embeddings(len(self.tokenizer))
 
-        self.pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            device=self.device,
-        )
+        if self.device == 0:
+            self.model = self.model.to("cuda")
+        self.model.eval()
 
         logger.info(f"✅ KalamGPT loaded on {'GPU' if self.device == 0 else 'CPU'}")
 
@@ -68,32 +65,39 @@ class KalamGPT:
 
         # Build prompt with RAG context
         system = "You are Kalam GPT, inspired by Dr. A.P.J. Abdul Kalam.\n\n"
-        
+
         if rag_context:
             prompt_text = f"{system}Context:\n{rag_context}\n\nQuestion: {user_message}\n\nAnswer:"
         else:
             prompt_text = f"{system}Question: {user_message}\n\nAnswer:"
 
         # Tokenize and truncate to stay under 1024 - max_new_tokens
-        tokens = self.tokenizer.encode(prompt_text)
-        max_input_tokens = 1024 - max_new_tokens - 50
+        capped_new_tokens = min(max_new_tokens, 200)
+        max_input_tokens = 1024 - capped_new_tokens - 50
 
+        tokens = self.tokenizer.encode(prompt_text)
         if len(tokens) > max_input_tokens:
             tokens = tokens[-max_input_tokens:]
 
         prompt_text = self.tokenizer.decode(tokens)
 
         try:
-            result = self.pipe(
-                prompt_text,
-                max_new_tokens=min(max_new_tokens, 200),
-                temperature=temperature,
-                top_p=top_p,
-                repetition_penalty=repetition_penalty,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-            full_output = result[0]["generated_text"]
+            inputs = self.tokenizer(prompt_text, return_tensors="pt")
+            if self.device == 0:
+                inputs = {k: v.to("cuda") for k, v in inputs.items()}
+
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=capped_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    repetition_penalty=repetition_penalty,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                )
+
+            full_output = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
             response = full_output[len(prompt_text):].strip()
             return response if response else "Let me think on this more deeply."
 
