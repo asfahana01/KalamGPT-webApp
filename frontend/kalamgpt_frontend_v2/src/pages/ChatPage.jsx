@@ -181,48 +181,47 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-bg/80 backdrop-blur-md border-b border-stroke/30">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="chat-shell">
+      <div className="chat-header">
+        <div className="chat-header-inner">
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-sm text-muted hover:text-text-primary transition-colors"
+            className="back-pill"
           >
-            ← Back to Dashboard
+            ← Dashboard
           </button>
-          <h1 className="font-display italic text-text-primary">Chat with Kalam</h1>
-          <div className="w-12" />
+          <div className="header-title">
+            <span className="eyebrow">A voice-led conversation</span>
+            <h1>Chat with Kalam</h1>
+          </div>
+          <div className="header-spacer" />
         </div>
       </div>
 
-      {/* Chat Container */}
-      <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col pt-24 pb-6 px-6">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto mb-6 space-y-6">
+      <div className="chat-container">
+        <div className="chat-thread">
           <AnimatePresence>
             {history.length === 0 && !loading ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center h-full text-center"
+                className="empty-state"
               >
-                <h2 className="text-2xl font-display italic text-text-primary mb-4">
-                  Chat with Kalam
-                </h2>
-                <p className="text-muted mb-8 max-w-md">
-                  Ask me anything about science, dreams, vision, leadership, or India's future. 
-                  You can speak or type your questions!
+                <div className="empty-state-glow" />
+                <p className="empty-kicker">Thoughtful, calm, and a little luminous</p>
+                <h2>Ask with curiosity</h2>
+                <p>
+                  Explore ideas around science, leadership, dreams, and the future of India.
+                  You can speak or type your question.
                 </p>
 
-                {/* Suggested Prompts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="prompt-grid">
                   {suggestedPrompts.map((suggestion, i) => (
                     <motion.button
                       key={i}
                       onClick={() => setPrompt(suggestion)}
-                      whileHover={{ scale: 1.05 }}
-                      className="p-4 bg-surface border border-stroke rounded-lg text-left hover:border-accent transition-all text-sm text-text-primary hover:bg-surface/80"
+                      whileHover={{ scale: 1.03, y: -2 }}
+                      className="prompt-chip"
                     >
                       {suggestion}
                     </motion.button>
@@ -235,36 +234,25 @@ export default function ChatPage() {
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${
-                    msg.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`message-row ${msg.role === 'user' ? 'message-row-user' : 'message-row-assistant'}`}
                 >
                   <div
-                    className={`max-w-xs md:max-w-2xl px-6 py-4 rounded-2xl ${
-                      msg.role === 'user'
-                        ? 'bg-accent-gradient text-bg'
-                        : 'bg-surface border border-stroke text-text-primary'
+                    className={`message-bubble ${
+                      msg.role === 'user' ? 'message-bubble-user' : 'message-bubble-assistant'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed mb-2">{msg.text}</p>
-                    
-                    {/* Voice/Text Options for Kalam responses */}
+                    <p>{msg.text}</p>
+
                     {msg.role === 'kalam' && (
-                      <div className="flex gap-2 mt-3">
+                      <div className="message-actions">
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
+                          whileHover={{ scale: 1.05 }}
                           onClick={() => handlePlayVoice(msg.text, msg.id || i)}
-                          className={`text-xs px-3 py-1 rounded-full transition-all ${
-                            playingId === (msg.id || i)
-                              ? 'bg-accent-gradient text-bg'
-                              : 'bg-black/20 hover:bg-black/30 text-text-primary'
-                          }`}
+                          className={`chip-pill ${playingId === (msg.id || i) ? 'chip-pill-active' : ''}`}
                         >
                           {playingId === (msg.id || i) ? '⏸️ Stop' : '🔊 Listen'}
                         </motion.button>
-                        <div className="text-xs px-3 py-1 rounded-full bg-black/20 text-text-primary">
-                          📄 Text
-                        </div>
+                        <div className="chip-pill chip-pill-muted">📄 Text</div>
                       </div>
                     )}
                   </div>
@@ -277,23 +265,21 @@ export default function ChatPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex justify-start"
+              className="loader-card"
             >
-              <div className="bg-surface border border-stroke px-6 py-4 rounded-2xl">
-                <div className="flex gap-2">
-                  {[...Array(3)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ y: [0, -8, 0] }}
-                      transition={{
-                        duration: 0.6,
-                        delay: i * 0.1,
-                        repeat: Infinity,
-                      }}
-                      className="w-2 h-2 bg-muted rounded-full"
-                    />
-                  ))}
-                </div>
+              <div className="loader-dots">
+                {[...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{
+                      duration: 0.6,
+                      delay: i * 0.1,
+                      repeat: Infinity,
+                    }}
+                    className="loader-dot"
+                  />
+                ))}
               </div>
             </motion.div>
           )}
@@ -301,58 +287,46 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input Section */}
-        <form
-          onSubmit={handleSendMessage}
-          className="flex gap-2 bg-surface border border-stroke rounded-full p-2"
-        >
-          {/* Microphone Button - LEFT SIDE */}
+        <form onSubmit={handleSendMessage} className="composer">
           <motion.button
             type="button"
             onClick={handleMicClick}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            className={`px-4 py-3 rounded-full transition-all ${
-              isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'bg-surface hover:bg-stroke/50 text-text-primary'
-            }`}
+            className={`mic-button ${isListening ? 'mic-button-listening' : ''}`}
             disabled={loading}
             title="Click to speak"
           >
             {isListening ? '🎙️' : '🎤'}
           </motion.button>
 
-          {/* Text Input */}
           <input
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={isListening ? 'Listening...' : 'Ask Kalam...'}
-            className="flex-1 bg-transparent px-6 py-3 text-text-primary placeholder-muted focus:outline-none"
+            className="composer-input"
             disabled={loading || isListening}
           />
 
-          {/* Send Button - RIGHT SIDE */}
           <motion.button
             type="submit"
             disabled={loading || isListening}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.95 }}
-            className="px-6 py-3 bg-accent-gradient text-bg rounded-full font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="send-button"
           >
             Send
           </motion.button>
         </form>
 
-        {/* Microphone Status */}
         {isListening && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center text-sm text-accent mt-2"
+            className="listening-status"
           >
-            🎙️ Listening... Click mic again to stop
+            🎙️ Listening... Click the mic again to stop.
           </motion.div>
         )}
       </div>
