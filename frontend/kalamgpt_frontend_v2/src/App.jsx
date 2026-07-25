@@ -4,9 +4,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RegisterPage } from "./pages/RegisterPage";
 import { OTPPage } from "./pages/OTPPage";
-import { LoginPage } from "./pages/LoginPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { ChatPage } from "./pages/ChatPage";
+import  { LoginPage } from "./pages/LoginPage";
+import  DashboardPage  from "./pages/DashboardPage";
+import  ChatPage  from "./pages/ChatPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();

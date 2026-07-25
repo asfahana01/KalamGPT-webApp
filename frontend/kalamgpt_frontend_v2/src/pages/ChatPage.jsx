@@ -1,249 +1,361 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-const QUOTES = [
-  "Dream, dream, dream. Dreams transform into thoughts, and thoughts result in action.",
-  "You have to dream before your dreams can come true.",
-  "Excellence is a continuous process and not an accident.",
-  "The best brains of the nation may be found on the last benches of the classroom.",
-];
+const suggestedPrompts = [
+  'What dreams did you have as a child?',
+  'How can youth contribute to nation building?',
+  'What is your vision for India\'s future?',
+  'What advice do you have for students?',
+]
 
-function QuoteBar() {
-  const [idx, setIdx] = useState(0);
+export default function ChatPage() {
+  const { chatId } = useParams()
+  const navigate = useNavigate()
+  const { token } = useAuth()
+  const [history, setHistory] = useState([])
+  const [prompt, setPrompt] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [playingId, setPlayingId] = useState(null)
+  const [sessionId, setSessionId] = useState(() => {
+    return chatId || `session-${Date.now()}`
+  })
+  const bottomRef = useRef(null)
+  const recognitionRef = useRef(null)
+
+  // Initialize Speech Recognition
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % QUOTES.length), 8000);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <div className="quote-bar">
-      <span className="quote-mark">"</span>
-      <span className="quote-text">{QUOTES[idx]}</span>
-      <span className="quote-mark">"</span>
-    </div>
-  );
-}
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
 
-function Message({ role, text }) {
-  const isKalam = role === "kalam";
-  return (
-    <div className={`message-row ${isKalam ? "kalam-row" : "user-row"}`}>
-      {isKalam && <div className="avatar kalam-avatar">🚀</div>}
-      <div className={`bubble ${isKalam ? "kalam-bubble" : "user-bubble"}`}>
-        <p>{text}</p>
-      </div>
-      {!isKalam && <div className="avatar user-avatar">🎓</div>}
-    </div>
-  );
-}
+      recognition.onstart = () => {
+        setIsListening(true)
+      }
 
-function TypingIndicator() {
-  return (
-    <div className="message-row kalam-row">
-      <div className="avatar kalam-avatar">🚀</div>
-      <div className="bubble kalam-bubble typing-bubble">
-        <span className="dot" />
-        <span className="dot" />
-        <span className="dot" />
-      </div>
-    </div>
-  );
-}
+      recognition.onresult = (event) => {
+        let interimTranscript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            setPrompt((prev) => prev + transcript + ' ')
+          } else {
+            interimTranscript += transcript
+          }
+        }
+      }
 
-function SuggestedPrompts({ onSelect }) {
-  const prompts = [
-    "What advice do you have for a student who has failed?",
-    "How can India solve its education crisis?",
-    "What is the connection between science and spirituality?",
-    "Give me a bold idea to improve rural healthcare.",
-  ];
-  return (
-    <div className="suggestions">
-      <p className="suggestions-label">Ask Kalam about…</p>
-      <div className="suggestions-grid">
-        {prompts.map((p) => (
-          <button key={p} className="suggestion-chip" onClick={() => onSelect(p)}>
-            {p}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+      recognition.onend = () => {
+        setIsListening(false)
+      }
 
-export function ChatPage() {
-  const navigate = useNavigate();
-  const { token } = useAuth();
-  const [history, setHistory] = useState([]);
-  const [prompt, setPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const bottomRef = useRef(null);
-  const textareaRef = useRef(null);
-  const { chatId } = useParams();
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error)
+        setIsListening(false)
+      }
 
-// Load historical chat if chatId is provided
-useEffect(() => {
-  if (chatId) {
-    fetchHistoricalChat(chatId);
-  }
-}, [chatId, token]);
-
-const fetchHistoricalChat = async (id) => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_URL}/chat/${id}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setHistory(data.chat || []);
+      recognitionRef.current = recognition
     }
-  } catch (err) {
-    console.error('Failed to fetch chat:', err);
-  } finally {
-    setLoading(false);
-  }
-};
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, loading]);
+  }, [])
 
+  // Scroll to bottom
   useEffect(() => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [history])
+
+  // Load historical chat
+  useEffect(() => {
+    if (chatId) {
+      fetchHistoricalChat(chatId)
     }
-  }, [prompt]);
+  }, [chatId, token])
 
-  const ask = async (overridePrompt) => {
-    const text = (overridePrompt || prompt).trim();
-    if (!text || loading) return;
+  const fetchHistoricalChat = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/chat/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setHistory(data.chat || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch chat:', err)
+    }
+  }
 
-    setError(null);
-    setHistory((h) => [...h, { role: "user", text }]);
-    setPrompt("");
-    setLoading(true);
+  // Start listening to microphone
+  const handleMicClick = () => {
+    if (recognitionRef.current) {
+      if (isListening) {
+        recognitionRef.current.stop()
+        setIsListening(false)
+      } else {
+        setPrompt('')
+        recognitionRef.current.start()
+      }
+    }
+  }
+
+  // Send message
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    if (!prompt.trim() || loading) return
+
+    const userMessage = prompt
+    setPrompt('')
+    setHistory([...history, { role: 'user', text: userMessage }])
+    setLoading(true)
 
     try {
       const res = await fetch(`${API_URL}/generate`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ prompt: text }),
-      });
+        body: JSON.stringify({ 
+          prompt: userMessage,
+          session_id: sessionId 
+        }),
+      })
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Server error");
+      const data = await res.json()
+      if (res.ok) {
+        setHistory((prev) => [
+          ...prev,
+          { role: 'kalam', text: data.response, id: data.chat_id },
+        ])
+        if (data.session_id) setSessionId(data.session_id)
       }
-
-      const data = await res.json();
-      setHistory((h) => [...h, { role: "kalam", text: data.response }]);
     } catch (err) {
-      setError(err.message || "Could not reach Kalam GPT. Is the backend running?");
+      console.error('Failed to send message:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      ask();
+  // Play voice response
+  const handlePlayVoice = async (messageText, messageId) => {
+    if (playingId === messageId) {
+      const audio = document.getElementById(`audio-${messageId}`)
+      if (audio) audio.pause()
+      setPlayingId(null)
+      return
     }
-  };
 
-  const clearChat = () => {
-    setHistory([]);
-    setError(null);
-  };
+    setPlayingId(messageId)
 
-  const goToDashboard = () => {
-    navigate('/dashboard');
-  };
+    try {
+      const res = await fetch(`${API_URL}/text-to-speech`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: messageText }),
+      })
+
+      if (res.ok) {
+        const blob = await res.blob()
+        const audioUrl = URL.createObjectURL(blob)
+        const audio = new Audio(audioUrl)
+        
+        audio.onended = () => setPlayingId(null)
+        audio.play()
+      } else {
+        setPlayingId(null)
+        alert('Voice not available')
+      }
+    } catch (err) {
+      console.error('Failed to play voice:', err)
+      setPlayingId(null)
+    }
+  }
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-inner">
-          <div className="logo">
-            <span className="logo-rocket">🚀</span>
-            <div>
-              <h1 className="logo-title">Kalam GPT</h1>
-              <p className="logo-sub">Inspired by Dr. A.P.J. Abdul Kalam</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {history.length > 0 && (
-              <button className="clear-btn" onClick={clearChat}>
-                New Chat
-              </button>
+    <div className="min-h-screen bg-bg flex flex-col">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-bg/80 backdrop-blur-md border-b border-stroke/30">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="text-sm text-muted hover:text-text-primary transition-colors"
+          >
+            ← Back to Dashboard
+          </button>
+          <h1 className="font-display italic text-text-primary">Chat with Kalam</h1>
+          <div className="w-12" />
+        </div>
+      </div>
+
+      {/* Chat Container */}
+      <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col pt-24 pb-6 px-6">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto mb-6 space-y-6">
+          <AnimatePresence>
+            {history.length === 0 && !loading ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center h-full text-center"
+              >
+                <h2 className="text-2xl font-display italic text-text-primary mb-4">
+                  Chat with Kalam
+                </h2>
+                <p className="text-muted mb-8 max-w-md">
+                  Ask me anything about science, dreams, vision, leadership, or India's future. 
+                  You can speak or type your questions!
+                </p>
+
+                {/* Suggested Prompts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {suggestedPrompts.map((suggestion, i) => (
+                    <motion.button
+                      key={i}
+                      onClick={() => setPrompt(suggestion)}
+                      whileHover={{ scale: 1.05 }}
+                      className="p-4 bg-surface border border-stroke rounded-lg text-left hover:border-accent transition-all text-sm text-text-primary hover:bg-surface/80"
+                    >
+                      {suggestion}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              history.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex ${
+                    msg.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  <div
+                    className={`max-w-xs md:max-w-2xl px-6 py-4 rounded-2xl ${
+                      msg.role === 'user'
+                        ? 'bg-accent-gradient text-bg'
+                        : 'bg-surface border border-stroke text-text-primary'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed mb-2">{msg.text}</p>
+                    
+                    {/* Voice/Text Options for Kalam responses */}
+                    {msg.role === 'kalam' && (
+                      <div className="flex gap-2 mt-3">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          onClick={() => handlePlayVoice(msg.text, msg.id || i)}
+                          className={`text-xs px-3 py-1 rounded-full transition-all ${
+                            playingId === (msg.id || i)
+                              ? 'bg-accent-gradient text-bg'
+                              : 'bg-black/20 hover:bg-black/30 text-text-primary'
+                          }`}
+                        >
+                          {playingId === (msg.id || i) ? '⏸️ Stop' : '🔊 Listen'}
+                        </motion.button>
+                        <div className="text-xs px-3 py-1 rounded-full bg-black/20 text-text-primary">
+                          📄 Text
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))
             )}
-            <button className="clear-btn" onClick={goToDashboard}>
-              Dashboard
-            </button>
-          </div>
+          </AnimatePresence>
+
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-start"
+            >
+              <div className="bg-surface border border-stroke px-6 py-4 rounded-2xl">
+                <div className="flex gap-2">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{
+                        duration: 0.6,
+                        delay: i * 0.1,
+                        repeat: Infinity,
+                      }}
+                      className="w-2 h-2 bg-muted rounded-full"
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          <div ref={bottomRef} />
         </div>
-        <QuoteBar />
-      </header>
 
-      <main className="chat-area">
-        {history.length === 0 && !loading ? (
-          <SuggestedPrompts onSelect={(p) => ask(p)} />
-        ) : (
-          <div className="messages">
-            {history.map((m, i) => (
-              <Message key={i} role={m.role} text={m.text} />
-            ))}
-            {loading && <TypingIndicator />}
-            <div ref={bottomRef} />
-          </div>
-        )}
-      </main>
+        {/* Input Section */}
+        <form
+          onSubmit={handleSendMessage}
+          className="flex gap-2 bg-surface border border-stroke rounded-full p-2"
+        >
+          {/* Microphone Button - LEFT SIDE */}
+          <motion.button
+            type="button"
+            onClick={handleMicClick}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className={`px-4 py-3 rounded-full transition-all ${
+              isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-surface hover:bg-stroke/50 text-text-primary'
+            }`}
+            disabled={loading}
+            title="Click to speak"
+          >
+            {isListening ? '🎙️' : '🎤'}
+          </motion.button>
 
-      {error && (
-        <div className="error-banner">
-          ⚠️ {error}
-          <button onClick={() => setError(null)}>✕</button>
-        </div>
-      )}
-
-      <footer className="input-bar">
-        <div className="input-inner">
-          <textarea
-            ref={textareaRef}
-            className="input-textarea"
+          {/* Text Input */}
+          <input
+            type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask Kalam about science, youth, India, dreams…"
-            rows={1}
-            disabled={loading}
+            placeholder={isListening ? 'Listening...' : 'Ask Kalam...'}
+            className="flex-1 bg-transparent px-6 py-3 text-text-primary placeholder-muted focus:outline-none"
+            disabled={loading || isListening}
           />
-          <button
-            className="send-btn"
-            onClick={() => ask()}
-            disabled={loading || !prompt.trim()}
+
+          {/* Send Button - RIGHT SIDE */}
+          <motion.button
+            type="submit"
+            disabled={loading || isListening}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-6 py-3 bg-accent-gradient text-bg rounded-full font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {loading ? (
-              <span className="spinner" />
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            )}
-          </button>
-        </div>
-        <p className="input-hint">Enter to send · Shift+Enter for new line</p>
-      </footer>
+            Send
+          </motion.button>
+        </form>
+
+        {/* Microphone Status */}
+        {isListening && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-sm text-accent mt-2"
+          >
+            🎙️ Listening... Click mic again to stop
+          </motion.div>
+        )}
+      </div>
     </div>
-  );
+  )
 }

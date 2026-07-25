@@ -81,9 +81,6 @@ app.register_blueprint(auth_bp)
 from feedback.feedback_routes import feedback_bp
 app.register_blueprint(feedback_bp)
 
-
-from routes_speech import speech_bp
-app.register_blueprint(speech_bp)
 # ─────────────────────────────────────────────────────────────────────────────
 # Load Intelligence Processing Layer (1.6) — the fine-tuned model
 # ─────────────────────────────────────────────────────────────────────────────
