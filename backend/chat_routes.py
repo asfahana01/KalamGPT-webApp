@@ -10,6 +10,7 @@ from models import db, ChatHistory
 from auth.auth_utils import optional_token
 from utils.security import rate_limit, sanitize_text_input
 from ethical.ethical_layer import ethical_layer
+from kalam_ai.orchestrator import generate_kalam_response
 
 logger = logging.getLogger(__name__)
 chat_bp = Blueprint("chat", __name__, url_prefix="/api")
@@ -44,13 +45,32 @@ def register_chat_routes(app, kalam_model, multimodal_engine):
         if not is_safe:
             return jsonify({"response": block_reason, "prompt": prompt, "blocked": True}), 200
 
-        # Generate response
-        raw_response = kalam_model.generate(
-            user_message=prompt,
-            rag_context="",
-            max_new_tokens=max_tokens,
-            temperature=temperature,
-        )
+        # Generate response through the PDF-aligned layered pipeline.
+        # Keep the old model path as a safe fallback during migration.
+        try:
+            from knowledge.rag_engine import rag_engine
+            layered = generate_kalam_response(
+                prompt,
+                kalam_model,
+                rag_engine,
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+            )
+            raw_response = layered.response
+            sources = layered.sources
+            active_layers = layered.active_layers
+            verification = layered.verification
+        except Exception as exc:
+            logger.exception("Layered Kalam pipeline failed; using legacy fallback: %s", exc)
+            raw_response = kalam_model.generate(
+                user_message=prompt,
+                rag_context="",
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+            )
+            sources = []
+            active_layers = ["personality"]
+            verification = {"needs_review": True, "fallback": True}
 
         ethical_result = ethical_layer.process(prompt, raw_response)
         final_response = ethical_result["response"]
@@ -62,7 +82,7 @@ def register_chat_routes(app, kalam_model, multimodal_engine):
                 session_id=session_id,
                 prompt=prompt,
                 response=final_response,
-                retrieved_context=None,
+                retrieved_context="\n\n".join(s.get("text", "") for s in sources) or None,
                 input_modality="text",
             )
             db.session.add(chat_entry)
@@ -71,7 +91,9 @@ def register_chat_routes(app, kalam_model, multimodal_engine):
             return jsonify({
                 "response": final_response,
                 "prompt": prompt,
-                "sources": [],
+                "sources": sources,
+                "active_layers": active_layers,
+                "verification": verification,
                 "session_id": session_id,
                 "chat_id": chat_entry.id
             }), 200
@@ -79,7 +101,9 @@ def register_chat_routes(app, kalam_model, multimodal_engine):
         return jsonify({
             "response": final_response,
             "prompt": prompt,
-            "sources": [],
+            "sources": sources,
+            "active_layers": active_layers,
+            "verification": verification,
         }), 200
 
     @chat_bp.route("/history", methods=["GET", "OPTIONS"])
