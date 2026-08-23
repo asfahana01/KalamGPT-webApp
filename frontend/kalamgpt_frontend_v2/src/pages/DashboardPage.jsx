@@ -32,76 +32,70 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pt-20">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="dashboard-shell">
+      <div className="dashboard-content">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-12"
+          className="hero-card"
         >
-          <h1 className="text-4xl font-display italic text-text-primary mb-4">
-            Welcome back, {user?.name || 'User'}
-          </h1>
-          <p className="text-muted">{user?.email}</p>
+          <div className="hero-copy">
+            <p className="hero-kicker">Curated conversations</p>
+            <h1>Welcome back, {user?.name || 'User'}</h1>
+            <p className="hero-subtitle">{user?.email}</p>
+          </div>
+
+          <div className="hero-actions">
+            <button
+              onClick={() => navigate('/chat')}
+              className="primary-action"
+            >
+              Start New Chat
+            </button>
+            <button
+              onClick={() => {
+                logout()
+                navigate('/login')
+              }}
+              className="secondary-action"
+            >
+              Logout
+            </button>
+          </div>
         </motion.div>
 
-        {/* CTA Buttons */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex gap-4 mb-12"
+          className="history-section"
         >
-          <button
-            onClick={() => navigate('/chat')}
-            className="px-8 py-3 bg-accent-gradient text-bg rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            Start New Chat
-          </button>
-          <button
-            onClick={() => {
-              logout()
-              navigate('/login')
-            }}
-            className="px-8 py-3 border border-stroke rounded-lg text-text-primary hover:bg-stroke/20 transition-colors"
-          >
-            Logout
-          </button>
-        </motion.div>
+          <div className="section-heading">
+            <h2>Recent Conversations</h2>
+            <span>Resume where you left off</span>
+          </div>
 
-        {/* Chat History */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="text-2xl font-display italic text-text-primary mb-6">
-            Recent Conversations
-          </h2>
-          
           {loading ? (
-            <p className="text-muted">Loading...</p>
+            <div className="history-empty">Loading your conversations…</div>
           ) : history.length === 0 ? (
-            <p className="text-muted">No conversations yet. Start a new chat!</p>
+            <div className="history-empty">No conversations yet. Start a new chat to begin.</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {history.map((chat) => (
+            <div className="history-grid">
+              {history.map((chat, index) => (
                 <motion.button
                   key={chat.id}
                   onClick={() => navigate(`/chat/${chat.id}`)}
-                  whileHover={{ scale: 1.05 }}
-                  className="p-6 bg-surface border border-stroke rounded-2xl text-left hover:border-accent transition-all group"
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                  className="history-card"
                 >
-                  <p className="text-sm text-muted group-hover:text-accent transition-colors mb-2">
+                  <p className="history-date">
                     {new Date(chat.created_at).toLocaleDateString()}
                   </p>
-                  <p className="text-text-primary font-medium truncate mb-2">
-                    {chat.preview || 'Chat'}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {chat.message_count} messages
-                  </p>
+                  <p className="history-preview">{chat.preview || 'Chat'}</p>
+                  <p className="history-meta">{chat.message_count} messages</p>
                 </motion.button>
               ))}
             </div>
