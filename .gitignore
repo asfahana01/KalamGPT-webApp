@@ -61,6 +61,8 @@ frontend/dist/
 backend/.env
 frontend/.env
 
+data 
+
 # ─── IDE & Editor Config ────────────────────────────────────────────────────
 .vscode/
 .idea/
