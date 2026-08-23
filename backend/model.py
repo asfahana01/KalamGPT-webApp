@@ -63,13 +63,20 @@ class KalamGPT:
         if not user_message or not user_message.strip():
             return "Please ask me something. I am here to help."
 
-        # Build prompt with RAG context
-        system = "You are Kalam GPT, inspired by Dr. A.P.J. Abdul Kalam.\n\n"
-
-        if rag_context:
-            prompt_text = f"{system}Context:\n{rag_context}\n\nQuestion: {user_message}\n\nAnswer:"
+        # The layered orchestrator already builds a complete prompt. Do not wrap
+        # it a second time, or the small causal model sees nested instructions.
+        is_complete_prompt = "USER QUESTION:" in user_message and "RETRIEVED EVIDENCE:" in user_message
+        if is_complete_prompt:
+            prompt_text = user_message
         else:
-            prompt_text = f"{system}Question: {user_message}\n\nAnswer:"
+            system = (
+                "You are KalamGPT, an AI inspired by Dr. A.P.J. Abdul Kalam. "
+                "Answer clearly and briefly. You are not Dr. Kalam.\n\n"
+            )
+            if rag_context:
+                prompt_text = f"{system}Context:\n{rag_context}\n\nQuestion: {user_message}\n\nAnswer:"
+            else:
+                prompt_text = f"{system}Question: {user_message}\n\nAnswer:"
 
         # Tokenize and truncate to stay under 1024 - max_new_tokens
         capped_new_tokens = min(max_new_tokens, 200)
@@ -93,13 +100,18 @@ class KalamGPT:
                     temperature=temperature,
                     top_p=top_p,
                     repetition_penalty=repetition_penalty,
-                    do_sample=True,
+                    do_sample=temperature > 0.15,
                     pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
                 )
 
-            full_output = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            response = full_output[len(prompt_text):].strip()
-            return response if response else "Let me think on this more deeply."
+            # Decode only tokens generated after the prompt. Character slicing
+            # the decoded full string can corrupt text because tokenization is not
+            # a one-character-per-token operation.
+            prompt_length = inputs["input_ids"].shape[1]
+            new_tokens = output_ids[0][prompt_length:]
+            response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+            return response if response else "I could not form a clear answer. Please try again."
 
         except Exception as e:
             logger.error(f"Generation error: {e}")
