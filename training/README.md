@@ -56,3 +56,28 @@ python training/split_dataset.py --version v1
   }
 }
 Datasets written to: C:\Users\hanaa\OneDrive\Desktop\GitHub\KalamGPT\data\kalam\datasets\v1
+
+
+## Instruction-tuning dataset
+
+Pilot candidates are not used automatically. Review each record in `data/kalam/datasets/pilot_candidates.jsonl` and change `review_status` from `pending` to `approved` only after checking relevance, source references, originality, and quotation safety.
+
+Build the approved instruction dataset with:
+
+```bash
+python training/prepare_instruction_dataset.py --version v1
+```
+
+The script writes `instruction.jsonl`, `instruction.txt`, and a manifest under `data/kalam/datasets/instruction/v1/`. If no candidates are approved, it stops intentionally so pending examples cannot enter training by mistake.
+
+## Evaluation outputs
+
+After a model has been trained, generate reproducible outputs for the layer evaluation prompts:
+
+```bash
+python training/evaluate_model.py \\
+  --model-path models/kalam-gpt2-v1 \\
+  --output models/kalam-gpt2-v1/evaluation_outputs.jsonl
+```
+
+The evaluation file includes empty human-review fields for relevance, coherence, factual grounding, Kalam-inspired tone, repetition, quotation safety, and notes. It is an evaluation record, not an automatic accuracy percentage.
