@@ -161,17 +161,36 @@ def main() -> None:
         raw = load_dataset("text", data_files={"train": str(train_path), "validation": str(validation_path)})
 
     def tokenize(batch):
-        return tokenizer(batch["text"], add_special_tokens=True, truncation=False)
+        encoded = tokenizer(batch["text"], add_special_tokens=True, truncation=False)
+        if args.training_mode == "instruction":
+            # Train the model to produce the answer, not to memorize the
+            # system/user prompt. The prompt tokens are retained as context
+            # but ignored by CrossEntropyLoss via -100 labels.
+            labels = []
+            for text, input_ids in zip(batch["text"], encoded["input_ids"]):
+                prefix = text.rsplit("Assistant:", 1)[0] + "Assistant:"
+                prefix_ids = tokenizer(prefix, add_special_tokens=True, truncation=False)["input_ids"]
+                prefix_length = min(len(prefix_ids), len(input_ids))
+                labels.append([-100] * prefix_length + input_ids[prefix_length:])
+            encoded["labels"] = labels
+        else:
+            encoded["labels"] = [list(input_ids) for input_ids in encoded["input_ids"]]
+        return encoded
 
     tokenized = raw.map(tokenize, batched=True, remove_columns=["text"], desc="Tokenizing corpus")
     block_size = min(args.block_size, tokenizer.model_max_length if tokenizer.model_max_length < 100000 else args.block_size)
 
     def group_texts(batch):
-        concatenated = {key: sum(batch[key], []) for key in batch}
-        total_length = (len(concatenated["input_ids"]) // block_size) * block_size
-        result = {key: values[:total_length] for key, values in concatenated.items()}
-        result["labels"] = list(result["input_ids"])
-        return {key: [values[i : i + block_size] for i in range(0, total_length, block_size)] for key, values in result.items()}
+        input_ids = sum(batch["input_ids"], [])
+        attention_mask = sum(batch["attention_mask"], [])
+        labels = sum(batch["labels"], [])
+        total_length = (len(input_ids) // block_size) * block_size
+        grouped = {
+            "input_ids": input_ids[:total_length],
+            "attention_mask": attention_mask[:total_length],
+            "labels": labels[:total_length],
+        }
+        return {key: [values[i : i + block_size] for i in range(0, total_length, block_size)] for key, values in grouped.items()}
 
     tokenized = tokenized.map(group_texts, batched=True, desc=f"Grouping tokens into blocks of {block_size}")
     print(f"Token blocks: train={len(tokenized['train'])}, validation={len(tokenized['validation'])}")
@@ -209,6 +228,7 @@ def main() -> None:
     run_manifest = {
         "model_name": args.model_name,
         "training_mode": args.training_mode,
+        "assistant_only_loss": args.training_mode == "instruction",
         "dataset_version": args.dataset_version,
         "train_file": str(train_path),
         "validation_file": str(validation_path),

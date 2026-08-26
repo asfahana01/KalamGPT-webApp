@@ -109,3 +109,21 @@ python training/train_gpt2.py \\
 ```
 
 With only four approved examples, use this only as a pipeline test. Expand the approved dataset substantially before treating the resulting model as an improvement.
+
+
+Instruction mode uses assistant-only loss masking. The system and user text remain available as context, but their labels are set to `-100`, so the training loss focuses on generating the approved Assistant answer. This mode is enabled automatically with `--training-mode instruction` and is not used by the default raw-corpus mode.
+
+For the current four-example pipeline test, start from the existing raw-corpus model and write to a new output directory:
+
+```bash
+python training/train_gpt2.py \\
+  --training-mode instruction \\
+  --dataset-version v1 \\
+  --model-name /content/drive/MyDrive/KalamGPT/models/kalam-gpt2-v1 \\
+  --epochs 1 \\
+  --train-batch-size 1 \\
+  --eval-batch-size 1 \\
+  --gradient-accumulation-steps 1 \\
+  --output-dir /content/drive/MyDrive/KalamGPT/models/kalam-gpt2-instruction-v1-masked \\
+  --checkpoint-dir /content/drive/MyDrive/KalamGPT/models/kalam-gpt2-instruction-v1-masked/checkpoints
+```
