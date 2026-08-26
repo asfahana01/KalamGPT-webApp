@@ -23,6 +23,7 @@ from pathlib import Path
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-version", default="v1")
+    parser.add_argument("--training-mode", choices=["raw", "instruction"], default="raw")
     parser.add_argument("--model-name", default="gpt2")
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--checkpoint-dir", type=Path, default=None)
@@ -40,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume-from-checkpoint", default=None)
     parser.add_argument("--dry-run", action="store_true", help="Load/tokenize a small sample and exit")
     parser.add_argument("--trust-remote-code", action="store_true")
+    parser.add_argument("--system-prompt", default="You are KalamGPT, an AI inspired by Dr. A.P.J. Abdul Kalam. You are not Dr. Kalam.")
     return parser.parse_args()
 
 
@@ -98,12 +100,21 @@ def main() -> None:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[1]
     dataset_root = repo_root / "data" / "kalam" / "datasets" / args.dataset_version
-    train_path = dataset_root / "train.txt"
-    validation_path = dataset_root / "validation.txt"
-    output_dir = (args.output_dir or repo_root / "models" / f"kalam-gpt2-{args.dataset_version}").resolve()
+    instruction_root = repo_root / "data" / "kalam" / "datasets" / "instruction" / args.dataset_version
+    if args.training_mode == "instruction":
+        train_path = instruction_root / "train.jsonl"
+        validation_path = instruction_root / "validation.jsonl"
+        default_model_dir = repo_root / "models" / f"kalam-gpt2-instruction-{args.dataset_version}"
+        missing_message = f"Missing instruction dataset: {train_path}. Run prepare_instruction_dataset.py first."
+    else:
+        train_path = dataset_root / "train.txt"
+        validation_path = dataset_root / "validation.txt"
+        default_model_dir = repo_root / "models" / f"kalam-gpt2-{args.dataset_version}"
+        missing_message = f"Missing dataset files under {dataset_root}. Run prepare_dataset.py and split_dataset.py first."
+    output_dir = (args.output_dir or default_model_dir).resolve()
     checkpoint_dir = (args.checkpoint_dir or output_dir / "checkpoints").resolve()
     if not train_path.is_file() or not validation_path.is_file():
-        raise SystemExit(f"Missing dataset files under {dataset_root}. Run prepare_dataset.py and split_dataset.py first.")
+        raise SystemExit(missing_message)
     if args.block_size < 16:
         raise SystemExit("--block-size must be at least 16")
     set_seed(args.seed)
@@ -127,13 +138,27 @@ def main() -> None:
     print(f"Device: {'cuda' if has_cuda else 'cpu'}")
     print(f"Mixed precision: {'bf16' if use_bf16 else 'fp16' if use_fp16 else 'disabled'}")
     print(f"Model: {args.model_name}")
+    print(f"Training mode: {args.training_mode}")
     print(f"Train file: {train_path}")
     print(f"Validation file: {validation_path}")
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=args.trust_remote_code)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    raw = load_dataset("text", data_files={"train": str(train_path), "validation": str(validation_path)})
+    if args.training_mode == "instruction":
+        raw = load_dataset("json", data_files={"train": str(train_path), "validation": str(validation_path)})
+
+        def format_instruction(batch):
+            formatted = []
+            for messages in batch["messages"]:
+                user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "").strip()
+                assistant = next((m.get("content", "") for m in messages if m.get("role") == "assistant"), "").strip()
+                formatted.append(f"System: {args.system_prompt}\nUser: {user}\nAssistant: {assistant}")
+            return {"text": formatted}
+
+        raw = raw.map(format_instruction, batched=True, remove_columns=raw["train"].column_names, desc="Formatting instruction examples")
+    else:
+        raw = load_dataset("text", data_files={"train": str(train_path), "validation": str(validation_path)})
 
     def tokenize(batch):
         return tokenizer(batch["text"], add_special_tokens=True, truncation=False)
@@ -183,6 +208,7 @@ def main() -> None:
     metrics = trainer.evaluate()
     run_manifest = {
         "model_name": args.model_name,
+        "training_mode": args.training_mode,
         "dataset_version": args.dataset_version,
         "train_file": str(train_path),
         "validation_file": str(validation_path),

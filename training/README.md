@@ -81,3 +81,31 @@ python training/evaluate_model.py \\
 ```
 
 The evaluation file includes empty human-review fields for relevance, coherence, factual grounding, Kalam-inspired tone, repetition, quotation safety, and notes. It is an evaluation record, not an automatic accuracy percentage.
+
+
+The instruction builder also creates disjoint files for training and validation:
+
+```text
+data/kalam/datasets/instruction/v1/
+├── instruction.jsonl       # complete approved set
+├── train.jsonl             # used for training
+├── validation.jsonl        # held out for validation
+├── instruction.txt
+├── train.txt
+├── validation.txt
+└── manifest.json
+```
+
+Run instruction-mode fine-tuning into a separate model directory so the raw-corpus baseline is preserved:
+
+```bash
+python training/train_gpt2.py \\
+  --training-mode instruction \\
+  --dataset-version v1 \\
+  --model-name gpt2 \\
+  --epochs 1 \\
+  --output-dir models/kalam-gpt2-instruction-v1 \\
+  --checkpoint-dir models/kalam-gpt2-instruction-v1/checkpoints
+```
+
+With only four approved examples, use this only as a pipeline test. Expand the approved dataset substantially before treating the resulting model as an improvement.
