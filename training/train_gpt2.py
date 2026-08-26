@@ -125,7 +125,7 @@ def main() -> None:
         from transformers import (
             AutoModelForCausalLM,
             AutoTokenizer,
-            DataCollatorForLanguageModeling,
+            default_data_collator,
             Trainer,
             TrainingArguments,
         )
@@ -201,7 +201,10 @@ def main() -> None:
     model = AutoModelForCausalLM.from_pretrained(args.model_name, trust_remote_code=args.trust_remote_code)
     model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
-    collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+    # The standard language-modeling collator recreates labels from
+    # input_ids. That would erase our -100 prompt mask, so use a collator that
+    # preserves the labels produced during tokenization.
+    collator = default_data_collator
     training_args = build_training_args(TrainingArguments, args, checkpoint_dir, use_fp16, use_bf16)
     trainer_kwargs = {
         "model": model,
@@ -229,6 +232,7 @@ def main() -> None:
         "model_name": args.model_name,
         "training_mode": args.training_mode,
         "assistant_only_loss": args.training_mode == "instruction",
+        "label_collator": "preserve_labels",
         "dataset_version": args.dataset_version,
         "train_file": str(train_path),
         "validation_file": str(validation_path),
