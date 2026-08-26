@@ -159,14 +159,22 @@ def main() -> None:
     model.config.pad_token_id = tokenizer.pad_token_id
     collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     training_args = build_training_args(TrainingArguments, args, checkpoint_dir, use_fp16, use_bf16)
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=tokenized["train"],
-        eval_dataset=tokenized["validation"],
-        data_collator=collator,
-        tokenizer=tokenizer,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": tokenized["train"],
+        "eval_dataset": tokenized["validation"],
+        "data_collator": collator,
+    }
+    # Transformers renamed Trainer.tokenizer to Trainer.processing_class in
+    # newer releases. Detect the installed API instead of pinning the user to
+    # one library version.
+    trainer_parameters = inspect.signature(Trainer.__init__).parameters
+    if "processing_class" in trainer_parameters:
+        trainer_kwargs["processing_class"] = tokenizer
+    elif "tokenizer" in trainer_parameters:
+        trainer_kwargs["tokenizer"] = tokenizer
+    trainer = Trainer(**trainer_kwargs)
     checkpoint = args.resume_from_checkpoint or None
     trainer.train(resume_from_checkpoint=checkpoint)
     output_dir.mkdir(parents=True, exist_ok=True)
