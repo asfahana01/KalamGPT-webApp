@@ -127,3 +127,26 @@ python training/train_gpt2.py \\
   --output-dir /content/drive/MyDrive/KalamGPT/models/kalam-gpt2-instruction-v1-masked \\
   --checkpoint-dir /content/drive/MyDrive/KalamGPT/models/kalam-gpt2-instruction-v1-masked/checkpoints
 ```
+
+## Local candidate generation
+
+`generate_candidates.py` creates new JSONL records for review. It never marks generated records as approved. Set `OPENAI_API_KEY` and `OPENAI_API_BASE` in the local environment; never place credentials in the repository.
+
+Start with a dry run:
+
+```bash
+python training/generate_candidates.py --layer reasoning --count 25 --dry-run
+```
+
+Generate a batch using the approved pilot examples as style references:
+
+```bash
+python training/generate_candidates.py \\
+  --layer reasoning \\
+  --count 25 \\
+  --examples data/kalam/datasets/pilot_candidates.jsonl \\
+  --source-catalog data/kalam/catalog/dataset_catalog.csv \\
+  --output data/kalam/datasets/pilot_candidates.generated.jsonl
+```
+
+Repeat for `personality`, `innovation`, and `mixed`. The output records contain `review_status: pending` and `auto_flags`. Review and revise them before changing any status to `approved`.
