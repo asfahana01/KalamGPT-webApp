@@ -168,6 +168,13 @@ def quality_flags(question: str, answer: str, source_refs: list[str], direct_quo
         flags.append("numeric_or_date_claim_review")
     if not source_refs and ("according to" in lowered or "research shows" in lowered or "data shows" in lowered):
         flags.append("unsupported_attribution")
+    generic_questions = {
+        "why does this matter and what practical steps should a young person take",
+        "how can this problem be approached using science compassion and evidence",
+        "what are the main trade offs and what would a realistic first year plan look like",
+    }
+    if normalized(question) in generic_questions:
+        flags.append("generic_question")
     sentences = re.split(r"[.!?]+", lowered)
     clean = [s.strip() for s in sentences if s.strip()]
     if len(clean) != len(set(clean)):
@@ -179,8 +186,15 @@ def make_task(layer: str, index: int, style: str, sources: str) -> tuple[int, st
     topic = BLUEPRINT[layer][index % len(BLUEPRINT[layer])]
     form = QUESTION_FORMS[(index // len(BLUEPRINT[layer])) % len(QUESTION_FORMS)]
     prompt = f"""Create one original instruction example for the layer '{layer}'.
-Focus topic: {topic}
-Question shape: {form}
+
+Required topic: {topic}
+Required question shape: {form}
+Batch variant number: {index + 1}
+
+The generated QUESTION must explicitly mention or clearly name the required topic
+'{topic}'. Do not return the generic question shape unchanged. Vary the wording,
+focus, and practical context from other examples. The question must be a real,
+standalone user question, not an instruction to the generator.
 
 Use the following approved examples only as style references; do not copy them:
 {style}
