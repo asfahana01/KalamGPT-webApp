@@ -199,13 +199,32 @@ def call_model(model: str, prompt: str) -> dict[str, Any]:
         from openai import OpenAI
     except ImportError as exc:
         raise SystemExit("Install the dependency first: python -m pip install openai") from exc
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
-        response_format=SCHEMA,
-        max_completion_tokens=1200,
-    )
+
+    # Explicitly pass the endpoint. OpenAI() alone defaults to api.openai.com,
+    # which would ignore a Groq-compatible base URL in the environment.
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("GROQ_API_BASE") or os.getenv("OPENAI_API_BASE")
+    if not api_key:
+        raise RuntimeError("Set GROQ_API_KEY or OPENAI_API_KEY before generating candidates")
+
+    client_kwargs: dict[str, str] = {"api_key": api_key}
+    if base_url:
+        client_kwargs["base_url"] = base_url
+    client = OpenAI(**client_kwargs)
+
+    request: dict[str, Any] = {
+        "model": model,
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
+        "response_format": SCHEMA,
+    }
+    # Groq's OpenAI-compatible endpoint uses max_tokens. Keep the OpenAI
+    # parameter for non-Groq endpoints that expect max_completion_tokens.
+    if base_url and "groq.com" in base_url:
+        request["max_tokens"] = 1200
+    else:
+        request["max_completion_tokens"] = 1200
+
+    response = client.chat.completions.create(**request)
     content = response.choices[0].message.content
     if not content:
         raise ValueError("Model returned empty content")
