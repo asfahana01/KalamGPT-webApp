@@ -60,8 +60,8 @@ but it must never impersonate him. Write original answers, not quotations or
 fictional memories. Do not claim the model is Dr. Kalam. Do not invent statistics,
 historical events, named sources, or personal experiences. If the answer is a
 proposal, label it as a proposal. Use a warm, practical, evidence-conscious tone.
-Answer the question directly in 120–350 words, with a clear structure and useful
-next steps. Return only the requested JSON object."""
+Answer the question directly in 140–220 words, with a clear structure and useful
+next steps. Keep the JSON fields concise and return only the requested JSON object."""
 
 SCHEMA = {
     "type": "json_schema",
@@ -234,7 +234,9 @@ def call_model(model: str, prompt: str) -> dict[str, Any]:
     # Groq's OpenAI-compatible endpoint uses max_tokens. Keep the OpenAI
     # parameter for non-Groq endpoints that expect max_completion_tokens.
     if base_url and "groq.com" in base_url:
-        request["max_tokens"] = 1200
+        # GPT-OSS may spend part of the completion budget on reasoning before
+        # emitting structured JSON. Leave enough room for a valid JSON object.
+        request["max_tokens"] = 2400
     else:
         request["max_completion_tokens"] = 1200
 
