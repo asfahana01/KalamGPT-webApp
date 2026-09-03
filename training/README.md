@@ -150,3 +150,16 @@ python training/generate_candidates.py \\
 ```
 
 Repeat for `personality`, `innovation`, and `mixed`. The output records contain `review_status: pending` and `auto_flags`. Review and revise them before changing any status to `approved`.
+
+## Fast local candidate consolidation
+
+Use `review_candidates.py` to combine generated JSONL batches, preserve review statuses, assign unique IDs, flag exact duplicate questions, and write a review report. It never auto-approves candidates.
+
+```powershell
+python training/review_candidates.py `
+  --inputs data\kalam\datasets\pilot_candidates.jsonl data\kalam\datasets\pilot_candidates.reasoning.batch1.jsonl data\kalam\datasets\pilot_candidates.reasoning.batch1.retry.jsonl data\kalam\datasets\pilot_candidates.personality.batch1.jsonl data\kalam\datasets\pilot_candidates.personality.batch1.retry.jsonl `
+  --output data\kalam\datasets\pilot_candidates.reviewed.v1.jsonl `
+  --report data\kalam\datasets\pilot_candidates.reviewed.v1.report.json
+```
+
+Review every record with `auto_flags` and approve only records that pass human review.
