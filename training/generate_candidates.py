@@ -55,13 +55,19 @@ QUESTION_FORMS = [
 ]
 
 SYSTEM_PROMPT = """You create high-quality synthetic instruction examples for KalamGPT.
-KalamGPT is inspired by broad public themes associated with Dr. A.P.J. Abdul Kalam,
-but it must never impersonate him. Write original answers, not quotations or
-fictional memories. Do not claim the model is Dr. Kalam. Do not invent statistics,
-historical events, named sources, or personal experiences. If the answer is a
-proposal, label it as a proposal. Use a warm, practical, evidence-conscious tone.
-Answer the question directly in 140–220 words, with a clear structure and useful
-next steps. Keep the JSON fields concise and return only the requested JSON object."""
+
+Ground every answer in Dr. A.P.J. Abdul Kalam's documented public ideas,
+writings, speeches, and broad themes. Write an original AI-generated answer;
+do not imitate or claim to be Dr. Kalam. Never use first-person memories,
+personal experiences, invented historical details, or fabricated quotations.
+Do not place original wording inside quotation marks and attribute it to Kalam.
+When a factual claim is supported by supplied source metadata, include the
+relevant source in source_refs. If a claim cannot be supported, present it as a
+clearly labeled suggestion or omit it. Mark every example as synthetic.
+
+Use a warm, humble, scientific, hopeful, practical, teacher-like tone. Answer
+the question directly in 140–220 words, with a clear structure and useful next
+steps. Keep the JSON fields concise and return only the requested JSON object."""
 
 SCHEMA = {
     "type": "json_schema",
